@@ -686,7 +686,7 @@
             </table>
           </div>
           <p style="font-size:12px;color:var(--muted);margin-top:10px">
-            ※ 카카오톡 등 일부 앱 내부 브라우저에서는 유입 경로 정보가 넘어오지 않아 "기타/직접 접속"으로 잡힐 수 있습니다. 대략적인 경향 파악용으로 참고해주세요.
+            ※ 카카오톡, 틱톡, 스레드 등 일부 앱 내부 브라우저에서는 유입 경로 정보가 넘어오지 않아 "직접접속"이나 "기타"로 잡힐 수 있습니다. 대략적인 경향 파악용으로 참고해주세요.
           </p>
         </div>
         <div class="admin-bar">
@@ -1224,8 +1224,12 @@
     if(host.indexOf('naver.com') !== -1) return '네이버';
     if(host.indexOf('daum.net') !== -1 || host.indexOf('kakao.com') !== -1) return '다음/카카오';
     if(host.indexOf('google.') !== -1) return '구글';
-    if(host.indexOf('instagram.com') !== -1) return '인스타그램';
-    if(host.indexOf('facebook.com') !== -1 || host.indexOf('fb.com') !== -1) return '페이스북';
+    // 인스타그램은 앱 내부에서 링크를 누르면 실제 출처를 페이스북 계열 중계 도메인으로
+    // 바꿔서 보내기 때문에(l.facebook.com, lm.facebook.com 등), 인스타그램과 페이스북을
+    // 정확히 구분할 방법이 없어 하나로 묶어서 표시합니다.
+    if(host.indexOf('instagram.com') !== -1 || host.indexOf('facebook.com') !== -1 || host.indexOf('fb.com') !== -1) return '인스타그램/페이스북';
+    if(host.indexOf('threads.net') !== -1 || host.indexOf('threads.com') !== -1) return '스레드';
+    if(host.indexOf('tiktok.com') !== -1) return '틱톡';
     if(host.indexOf('nate.com') !== -1) return '네이트';
     if(host === window.location.hostname) return '직접접속';
     return '기타';
