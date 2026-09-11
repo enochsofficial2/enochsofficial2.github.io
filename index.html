@@ -677,6 +677,18 @@
             </table>
           </div>
         </div>
+        <div class="stats-card" id="admin-referrer-stats" style="margin-top:16px">
+          <h4>유입 경로 (최근 <span id="referrer-range-label">7</span>일 합계)</h4>
+          <div class="table-wrap" style="border:1px solid var(--line)">
+            <table class="stats-table">
+              <thead><tr><th>경로</th><th>방문수(페이지뷰)</th></tr></thead>
+              <tbody id="referrer-body"><tr><td colspan="2" style="text-align:center;color:var(--muted)">불러오는 중...</td></tr></tbody>
+            </table>
+          </div>
+          <p style="font-size:12px;color:var(--muted);margin-top:10px">
+            ※ 카카오톡 등 일부 앱 내부 브라우저에서는 유입 경로 정보가 넘어오지 않아 "기타/직접 접속"으로 잡힐 수 있습니다. 대략적인 경향 파악용으로 참고해주세요.
+          </p>
+        </div>
         <div class="admin-bar">
           <div>총 <b id="admin-count">0</b>건의 예약 신청 (표시 중 <b id="admin-shown-count">0</b>건)</div>
           <div style="display:flex;gap:8px">
@@ -807,7 +819,7 @@
         });
     }
     if(action === 'visit'){
-      return supabaseClient.rpc('track_visit', {p_is_new_uniq: !!payload.isNewUniq, p_is_mobile: !!payload.isMobile}).then(function(res){
+      return supabaseClient.rpc('track_visit', {p_is_new_uniq: !!payload.isNewUniq, p_is_mobile: !!payload.isMobile, p_source: payload.source || '기타'}).then(function(res){
         if(res.error) throw new Error(res.error.message);
         return {ok:true};
       });
@@ -844,6 +856,22 @@
         .then(function(res){
           if(res.error) throw new Error(res.error.message);
           return {list: res.data || []};
+        });
+    }
+    if(action === 'referrer'){
+      var days = params.n || 7;
+      var cutoff = new Date();
+      cutoff.setDate(cutoff.getDate() - (days - 1));
+      var cutoffKey = cutoff.getFullYear()+'-'+String(cutoff.getMonth()+1).padStart(2,'0')+'-'+String(cutoff.getDate()).padStart(2,'0');
+      return supabaseClient.from('referrer_stats').select('source, pv').gte('date', cutoffKey)
+        .then(function(res){
+          if(res.error) throw new Error(res.error.message);
+          var totals = {};
+          (res.data || []).forEach(function(row){
+            totals[row.source] = (totals[row.source] || 0) + (row.pv || 0);
+          });
+          var list = Object.keys(totals).map(function(source){ return {source:source, pv:totals[source]}; });
+          return {list: list};
         });
     }
     return Promise.reject(new Error('unknown_action'));
@@ -1188,6 +1216,20 @@
   function isMobileDevice(){
     return /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent || '');
   }
+  function classifyReferrer(){
+    var ref = document.referrer || '';
+    if(!ref) return '직접접속';
+    var host = '';
+    try{ host = new URL(ref).hostname.toLowerCase(); }catch(e){ return '기타'; }
+    if(host.indexOf('naver.com') !== -1) return '네이버';
+    if(host.indexOf('daum.net') !== -1 || host.indexOf('kakao.com') !== -1) return '다음/카카오';
+    if(host.indexOf('google.') !== -1) return '구글';
+    if(host.indexOf('instagram.com') !== -1) return '인스타그램';
+    if(host.indexOf('facebook.com') !== -1 || host.indexOf('fb.com') !== -1) return '페이스북';
+    if(host.indexOf('nate.com') !== -1) return '네이트';
+    if(host === window.location.hostname) return '직접접속';
+    return '기타';
+  }
   function trackVisit(){
     if(!apiReady()) return;
     var key = statsDateKey(new Date());
@@ -1199,7 +1241,7 @@
         localStorage.setItem(flag, '1');
       }
     }catch(e){}
-    apiPost('visit', {isNewUniq: isNewUniq, isMobile: isMobileDevice()}).catch(function(){});
+    apiPost('visit', {isNewUniq: isNewUniq, isMobile: isMobileDevice(), source: classifyReferrer()}).catch(function(){});
   }
   trackVisit();
 
@@ -1238,6 +1280,31 @@
       statsMoreOpen = !statsMoreOpen;
       statsMoreBtn.textContent = statsMoreOpen ? '접기' : '더보기';
       renderStats();
+      renderReferrerStats();
+    });
+  }
+
+  var referrerBody = document.getElementById('referrer-body');
+  var referrerRangeLabel = document.getElementById('referrer-range-label');
+  function renderReferrerStats(){
+    if(!referrerBody) return;
+    var n = statsMoreOpen ? 31 : 7;
+    if(referrerRangeLabel) referrerRangeLabel.textContent = n;
+    apiGet({action:'referrer', n:n}).then(function(res){
+      var rows = res.list || [];
+      referrerBody.innerHTML = '';
+      if(!rows.length){
+        referrerBody.innerHTML = '<tr><td colspan="2" style="text-align:center;color:var(--muted)">아직 방문 기록이 없습니다.</td></tr>';
+        return;
+      }
+      rows.sort(function(a,b){ return (b.pv||0) - (a.pv||0); });
+      rows.forEach(function(r){
+        var tr = document.createElement('tr');
+        tr.innerHTML = '<td>'+(r.source||'기타')+'</td><td>'+(r.pv||0)+'</td>';
+        referrerBody.appendChild(tr);
+      });
+    }).catch(function(){
+      referrerBody.innerHTML = '<tr><td colspan="2" style="text-align:center;color:var(--muted)">불러오지 못했습니다.</td></tr>';
     });
   }
 
@@ -1414,6 +1481,7 @@
     adminPanel.hidden = false;
     loadReservationsFromApi();
     renderStats();
+    renderReferrerStats();
   }
   var adminLoginBtn = document.getElementById('admin-login');
   function doAdminLogin(){
@@ -1468,6 +1536,7 @@
   document.getElementById('admin-refresh').addEventListener('click', function(){
     loadReservationsFromApi();
     renderStats();
+    renderReferrerStats();
   });
   document.getElementById('admin-filter-apply').addEventListener('click', applyAdminFilter);
   document.getElementById('admin-filter-clear').addEventListener('click', function(){
