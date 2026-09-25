@@ -794,6 +794,12 @@
 
 <script>
 (function(){
+  // GA4 custom events contain behavior and coarse quote values only; never send booking PII.
+  function trackGaEvent(name, params){
+    if(typeof window.gtag === 'function') window.gtag('event', name, params || {});
+  }
+  var reservationFormStarted = false;
+
   // ---- backend config (Supabase) ----
   // Supabase 프로젝트 생성 후 [Project Settings > API]에서 아래 두 값을 붙여넣으세요.
   var SUPABASE_URL = 'https://aypohyjkuhfncnyynmuw.supabase.co';
@@ -888,6 +894,7 @@
   function showView(id){
     document.querySelectorAll('.view').forEach(function(v){ v.hidden = (v.id !== 'view-'+id); });
     window.scrollTo({top:0});
+    if(id !== 'admin') trackGaEvent('site_section_view', {section:id});
   }
 
   // ---- call / phone modal ----
@@ -906,6 +913,7 @@
     var telBtn = e.target.closest('.tel-trigger');
     if(telBtn){
       e.preventDefault();
+      trackGaEvent('phone_contact_open', {placement:telBtn.closest('header') ? 'header' : (telBtn.closest('footer') ? 'footer' : 'content')});
       openTelModal(telBtn.getAttribute('data-tel') || '010-5700-7884');
       return;
     }
@@ -938,6 +946,7 @@
   if(reserveModal) reserveModal.addEventListener('click', function(e){ if(e.target === reserveModal) reserveModal.hidden = true; });
   if(telModalCopy) telModalCopy.addEventListener('click', function(){
     var num = telModalNumber.textContent;
+    trackGaEvent('phone_number_copy_attempt', {placement:'contact_modal'});
     function done(){ telModalCopied.textContent = '복사되었습니다 ✓'; }
     if(navigator.clipboard && navigator.clipboard.writeText){
       navigator.clipboard.writeText(num).then(done).catch(function(){
@@ -953,6 +962,9 @@
     if(!t) return;
     var view = t.getAttribute('data-view');
     var scrollTo = t.getAttribute('data-scroll');
+    if(view !== 'admin'){
+      trackGaEvent(scrollTo === 'reserve' ? 'reserve_cta_click' : 'site_navigation', {destination:scrollTo || view});
+    }
     if(view === 'home' && scrollTo){
       e.preventDefault();
       showView('home');
@@ -1000,6 +1012,22 @@
   }
   var MIN_DAYS = 3;
   var calcInstances = [];
+  function trackParkingQuote(prefix, instance){
+    var fee = calcFee(instance.inDate.value, instance.inT.value, instance.outDate.value, instance.outT.value);
+    var calculator = prefix === 'c' ? 'home' : 'reservation';
+    if(!fee){
+      trackGaEvent('parking_quote_validation_error', {calculator:calculator, reason:'invalid_date_range'});
+      return;
+    }
+    trackGaEvent('parking_quote_updated', {
+      calculator:calculator,
+      parking_days:fee.days,
+      estimate_krw:fee.total,
+      weekday_days:fee.weekday,
+      weekend_days:fee.weekend,
+      minimum_stay_met:fee.days >= MIN_DAYS
+    });
+  }
   function makeCalc(prefix){
     var inDate = document.getElementById(prefix+'-in-date');
     var outDate = document.getElementById(prefix+'-out-date');
@@ -1039,7 +1067,7 @@
     var instance = {inDate:inDate, outDate:outDate, inT:inT, outT:outT, update:update};
     calcInstances.push(instance);
     [inDate,outDate,inT,outT].forEach(function(el){
-      el.addEventListener('change', function(){ syncCalcs(instance); });
+      el.addEventListener('change', function(){ syncCalcs(instance); trackParkingQuote(prefix, instance); });
     });
     update();
   }
@@ -1057,6 +1085,20 @@
   makeCalc('c');
   makeCalc('c2');
   syncCalcs(calcInstances[0]);
+
+  document.querySelectorAll('.faq-item').forEach(function(item, index){
+    var summary = item.querySelector('summary');
+    if(summary) summary.addEventListener('click', function(){
+      if(!item.open) trackGaEvent('faq_open', {faq_number:index + 1});
+    });
+  });
+  document.addEventListener('click', function(e){
+    var mapLink = e.target.closest('.map-links a, .foot-links a[href*="map.naver.com"], .foot-links a[href*="map.kakao.com"], .foot-links a[href*="google.com/maps"]');
+    if(!mapLink) return;
+    var href = mapLink.getAttribute('href') || '';
+    var provider = href.indexOf('naver.com') !== -1 ? 'naver' : (href.indexOf('kakao.com') !== -1 ? 'kakao' : 'google');
+    trackGaEvent('map_provider_click', {provider:provider});
+  });
 
   // ---- masking helpers ----
   function maskName(name){
@@ -1169,10 +1211,12 @@
     var name = document.getElementById('lk-name').value.trim();
     var last4 = document.getElementById('lk-phone').value.trim().replace(/\D/g,'');
     if(!name && !last4){
+      trackGaEvent('reservation_lookup_validation_error', {reason:'missing_search_input'});
       lkMsg.style.display = '';
       lkMsg.textContent = '예약자명 또는 휴대폰 뒷 4자리를 입력해주세요.';
       return;
     }
+    trackGaEvent('reservation_lookup_attempt');
     var lkBtn = document.getElementById('lk-btn');
     var lkBtnText = lkBtn.textContent;
     lkBtn.disabled = true;
@@ -1180,6 +1224,7 @@
     apiGet({action:'lookup', name:name, last4:last4}).then(function(res){
       var matches = res.list || [];
       if(!matches.length){
+        trackGaEvent('reservation_lookup_result', {result:'no_match', match_count:0});
         lookupTableWrap.hidden = true;
         lookupResults.hidden = true;
         lookupResults.innerHTML = '';
@@ -1187,6 +1232,7 @@
         lkMsg.textContent = '일치하는 예약 내역이 없습니다. 입력하신 정보를 다시 확인해주세요.';
         return;
       }
+      trackGaEvent('reservation_lookup_result', {result:'match', match_count:matches.length});
       lkMsg.style.display = 'none';
       lookupTableWrap.hidden = true;
       lookupResults.innerHTML = '';
@@ -1195,6 +1241,7 @@
       });
       lookupResults.hidden = false;
     }).catch(function(){
+      trackGaEvent('reservation_lookup_result', {result:'error'});
       lkMsg.style.display = '';
       lkMsg.textContent = '조회 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.';
     }).then(function(){
@@ -1210,6 +1257,7 @@
     if(lkPhoneEl && !lkPhoneEl.matches(':focus')) lkPhoneEl.value = '';
   }, 400);
   document.getElementById('lk-reset').addEventListener('click', function(){
+    trackGaEvent('reservation_list_view', {source:'reset_button'});
     document.getElementById('lk-name').value = '';
     document.getElementById('lk-phone').value = '';
     renderFullLookup();
@@ -1339,6 +1387,11 @@
   }
 
   var reservationForm = document.getElementById('reservation-form');
+  reservationForm.addEventListener('focusin', function(){
+    if(reservationFormStarted) return;
+    reservationFormStarted = true;
+    trackGaEvent('reservation_form_start');
+  });
   reservationForm.addEventListener('submit', function(e){
     e.preventDefault();
     var statusEl = document.getElementById('res-status');
@@ -1357,17 +1410,25 @@
     var outDate = document.getElementById('c2-out-date').value;
     var outTime = document.getElementById('c2-out-t').value;
     if(!name || !phone || !dest || !plate || !car || !people || !consent){
+      trackGaEvent('reservation_form_validation_error', {reason:'required_fields'});
       statusEl.textContent = '필수 항목을 모두 입력하고 개인정보 동의에 체크해주세요.';
       statusEl.className = 'write-status error';
       return;
     }
     var preFee = calcFee(inDate, inTime, outDate, outTime);
     if(!preFee || preFee.days < MIN_DAYS){
+      trackGaEvent('reservation_form_validation_error', {reason:'minimum_duration'});
       alert(MIN_DAYS+'일 이상부터 예약 가능합니다. 입차·출차 일시를 다시 확인해주세요.');
       statusEl.textContent = MIN_DAYS+'일 이상부터 예약 가능합니다.';
       statusEl.className = 'write-status error';
       return;
     }
+    trackGaEvent('reservation_submit', {
+      parking_days:preFee.days,
+      estimate_krw:preFee.total,
+      weekday_days:preFee.weekday,
+      weekend_days:preFee.weekend
+    });
     var data = {name:name, phone:phone, route:route, dest:dest, plate:plate, car:car, people:people, golf:golf, note:note,
       inDate:inDate, inTime:inTime, outDate:outDate, outTime:outTime, createdAt: Date.now(), status:'접수대기'};
     function afterSave(id){
@@ -1394,8 +1455,10 @@
     var submitBtn = reservationForm.querySelector('button[type=submit]');
     if(submitBtn) submitBtn.disabled = true;
     apiPost('create', {data:data}).then(function(res){
+      trackGaEvent('reservation_submit_result', {result:'success', parking_days:preFee.days});
       afterSave(res && res.id);
     }).catch(function(){
+      trackGaEvent('reservation_submit_result', {result:'error'});
       statusEl.textContent = '저장 중 오류가 발생했습니다. 전화(010-5700-7884)로 문의해주세요.';
       statusEl.className = 'write-status error';
     }).then(function(){
