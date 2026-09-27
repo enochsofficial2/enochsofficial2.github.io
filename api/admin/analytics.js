@@ -62,7 +62,8 @@ module.exports = async function handler(req, res) {
     const [overview, days, sources, events] = await Promise.all([
       runReport(token, propertyId, { ...common, metrics: [
         { name: 'totalUsers' }, { name: 'sessions' }, { name: 'screenPageViews' },
-        { name: 'averageEngagementTime' }, { name: 'engagementRate' }, { name: 'bounceRate' }
+        { name: 'averageEngagementTime', expression: 'userEngagementDuration/activeUsers' },
+        { name: 'engagementRate' }, { name: 'bounceRate' }
       ] }),
       runReport(token, propertyId, { ...common, dimensions: [{ name: 'date' }], metrics: [{ name: 'totalUsers' }, { name: 'sessions' }, { name: 'screenPageViews' }] }),
       runReport(token, propertyId, { ...common, dimensions: [{ name: 'sessionSourceMedium' }], metrics: [{ name: 'sessions' }, { name: 'totalUsers' }], limit: 10 }),
