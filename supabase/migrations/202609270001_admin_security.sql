@@ -2,6 +2,85 @@
 -- The Vercel /admin API uses its server-only Supabase secret after validating
 -- the signed, HttpOnly administrator session.
 
+create table if not exists public.reservations (
+  id uuid primary key default gen_random_uuid(),
+  created_at timestamptz not null default now(),
+  name text not null,
+  phone text not null,
+  route text,
+  dest text,
+  plate text,
+  car text,
+  people text,
+  golf text,
+  note text,
+  in_date date,
+  in_time text,
+  out_date date,
+  out_time text,
+  status text not null default '접수대기'
+);
+
+create table if not exists public.stats (
+  date date primary key,
+  uniq integer not null default 0,
+  pv integer not null default 0,
+  updated_at timestamptz not null default now(),
+  mobile_pv integer not null default 0,
+  pc_pv integer not null default 0
+);
+
+create table if not exists public.referrer_stats (
+  date date not null,
+  source text not null,
+  pv integer not null default 0,
+  updated_at timestamptz not null default now(),
+  primary key (date, source)
+);
+
+create or replace function public.mask_name_(p_name text)
+returns text language sql immutable
+as $function$
+  select case
+    when p_name is null or length(p_name) <= 1 then p_name
+    when length(p_name) = 2 then left(p_name, 1) || '*'
+    else left(p_name, 1) || repeat('*', length(p_name) - 2) || right(p_name, 1)
+  end;
+$function$;
+
+create or replace function public.mask_phone_(p_phone text)
+returns text language sql immutable
+as $function$
+  select case
+    when p_phone is null then null
+    when length(digits) < 4 then '****'
+    else left(digits, length(digits) - 4) || '****'
+  end
+  from (select regexp_replace(p_phone, '\D', '', 'g') as digits) as normalized;
+$function$;
+
+create or replace function public.mask_plate_(p_plate text)
+returns text language sql immutable
+as $function$
+  select case
+    when p_plate is null or length(p_plate) <= 2 then p_plate
+    else left(p_plate, length(p_plate) - 2) || '**'
+  end;
+$function$;
+
+create or replace function public.public_preview()
+returns table("createdAt" bigint, name text, phone text, plate text, status text)
+language sql stable security definer
+set search_path = pg_catalog, public
+as $function$
+  select (extract(epoch from r.created_at) * 1000)::bigint,
+         public.mask_name_(r.name), public.mask_phone_(r.phone),
+         public.mask_plate_(r.plate), r.status
+  from public.reservations as r
+  order by r.created_at desc
+  limit 10;
+$function$;
+
 alter table public.reservations enable row level security;
 alter table public.stats enable row level security;
 alter table public.referrer_stats enable row level security;
