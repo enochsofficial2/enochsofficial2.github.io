@@ -1246,7 +1246,7 @@
           order:rows.length
         };
         var duplicate = rows.some(function(existing){
-          return existing.date===row.date && existing.name===row.name && existing.phone===row.phone && existing.plate===row.plate;
+          return existing.date===row.date && existing.name===row.name && existing.plate===row.plate && existing.status===row.status;
         });
         if(!duplicate) rows.push(row);
       });
