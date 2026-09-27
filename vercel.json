@@ -2,7 +2,8 @@
   "regions": ["icn1"],
   "rewrites": [
     { "source": "/admin", "destination": "/admin.html" },
-    { "source": "/admin/", "destination": "/admin.html" }
+    { "source": "/admin/", "destination": "/admin.html" },
+    { "source": "/guide", "destination": "/guide.html" }
   ],
   "headers": [
     {
