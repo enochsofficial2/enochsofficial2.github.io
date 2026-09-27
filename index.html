@@ -1155,12 +1155,14 @@
 
   // ---- seed lookup table ----
   var SEED_ROWS = [
-    ['김남*','0103175****','97**','예약완료'],
-    ['이원*','0104050****','28**','접수대기'],
-    ['임태*','0106861****','25**','예약완료'],
-    ['임동*','0108850****','66**','접수대기'],
-    ['윤대*','0105684****','97**','예약완료'],
-    ['염상*','0109368****','94**','접수대기']
+    ['2026-09-27','김남*','0103175****','97**','예약완료'],
+    ['2026-09-27','이원*','0104050****','28**','접수대기'],
+    ['2026-09-27','임태*','0106861****','25**','예약완료'],
+    ['2026-09-27','임동*','0108850****','66**','접수대기'],
+    ['2026-09-27','윤대*','0105684****','97**','예약완료'],
+    ['2026-09-27','염상*','0109368****','94**','접수대기'],
+    ['2026-09-14','3*1','321','3***','예약완료'],
+    ['2026-09-10','1**4','****','12**','예약완료']
   ];
   var lookupBody = document.getElementById('lookup-body');
   var lkMsg = document.getElementById('lk-msg');
@@ -1225,19 +1227,35 @@
     lookupTableWrap.hidden = false;
     lookupBody.innerHTML = '';
     lkMsg.style.display = 'none';
-    var today = fmtDate(new Date());
+    var rows = SEED_ROWS.map(function(r,index){
+      return {date:r[0], name:r[1], phone:r[2], plate:r[3], status:r[4], createdAt:0, order:index};
+    });
     SEED_ROWS.forEach(function(r){
-      lookupBody.appendChild(renderLookupRow(today, r[0], r[1], r[2], r[3]));
+      lookupBody.appendChild(renderLookupRow(r[0], r[1], r[2], r[3], r[4]));
     });
     apiGet({action:'preview'}).then(function(res){
-      var rows = (res.list||[]).slice().sort(function(a,b){
-        return (Number(b.createdAt)||0) - (Number(a.createdAt)||0);
+      (res.list||[]).forEach(function(d){
+        var day = d.createdAt ? fmtDate(new Date(d.createdAt)) : fmtDate(new Date());
+        var row = {
+          date:day,
+          name:maskName(d.name),
+          phone:maskPhone(d.phone),
+          plate:maskPlate(d.plate),
+          status:d.status||'접수대기',
+          createdAt:(Number(d.createdAt)||Date.parse(d.createdAt)||0),
+          order:rows.length
+        };
+        var duplicate = rows.some(function(existing){
+          return existing.date===row.date && existing.name===row.name && existing.phone===row.phone && existing.plate===row.plate;
+        });
+        if(!duplicate) rows.push(row);
       });
-      if(!rows.length) return;
+      rows.sort(function(a,b){
+        return b.date.localeCompare(a.date) || b.createdAt-a.createdAt || a.order-b.order;
+      });
       lookupBody.innerHTML = '';
       rows.forEach(function(d){
-        var day = d.createdAt ? fmtDate(new Date(d.createdAt)) : today;
-        lookupBody.appendChild(renderLookupRow(day, maskName(d.name), maskPhone(d.phone), maskPlate(d.plate), d.status||'접수대기'));
+        lookupBody.appendChild(renderLookupRow(d.date, d.name, d.phone, d.plate, d.status));
       });
     }).catch(function(){});
   }
@@ -1258,7 +1276,8 @@
     lkBtn.textContent = '조회 중...';
     apiGet({action:'lookup', name:name, last4:last4}).then(function(res){
       var matches = (res.list || []).slice().sort(function(a,b){
-        return (Number(b.createdAt)||0) - (Number(a.createdAt)||0);
+        var time = function(d){ return Number(d.createdAt)||Date.parse(d.createdAt)||0; };
+        return time(b) - time(a);
       });
       if(!matches.length){
         trackGaEvent('reservation_lookup_result', {result:'no_match', match_count:0});
