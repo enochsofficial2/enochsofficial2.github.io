@@ -60,6 +60,45 @@
   @keyframes ticker{from{transform:translateX(0)}to{transform:translateX(-100%)}}
   .ticker-track span{margin-right:48px}
 
+  /* continuously scrolling masked reservation feed */
+  .reservation-feed{padding:56px 0 60px;background:linear-gradient(180deg,var(--bg),var(--surface))}
+  .reservation-feed-card{max-width:980px;margin:0 auto;padding:clamp(20px,4vw,34px);border:1px solid var(--line);border-radius:22px;background:var(--surface);box-shadow:0 20px 50px rgba(0,0,0,.14)}
+  .reservation-feed-title{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:20px}
+  .reservation-feed-title h2{margin:0;font-size:clamp(20px,3vw,27px);font-weight:900}
+  .reservation-feed-title p{margin:5px 0 0;color:var(--muted);font-size:13px}
+  .reservation-feed-badge{display:inline-flex;align-items:center;gap:8px;white-space:nowrap;padding:7px 11px;border:1px solid var(--line);border-radius:999px;color:var(--good);font-size:12px;font-weight:800}
+  .reservation-feed-badge i{width:8px;height:8px;border-radius:50%;background:var(--good);box-shadow:0 0 0 4px color-mix(in srgb,var(--good) 14%,transparent)}
+  .rfeed-header,.rfeed-row{display:grid;grid-template-columns:1.15fr .9fr 1.45fr .9fr 1fr;align-items:center;gap:10px}
+  .rfeed-header{padding:12px 14px;border-radius:12px 12px 0 0;background:var(--surface-2);color:var(--muted);font-size:12px;font-weight:800}
+  .rfeed-window{height:336px;overflow:hidden;border:1px solid var(--line);border-top:0;border-radius:0 0 12px 12px}
+  .rfeed-track{animation:rfeed-scroll 24s linear infinite}
+  .rfeed-window:hover .rfeed-track,.rfeed-window:focus-within .rfeed-track{animation-play-state:paused}
+  .rfeed-list{margin:0;padding:0;list-style:none}
+  .rfeed-row{min-height:42px;padding:8px 14px;border-bottom:1px solid var(--line);font-size:13px}
+  .rfeed-row:last-child{border-bottom:0}
+  .rfeed-masked{font-family:'JetBrains Mono',monospace;letter-spacing:.02em}
+  .rfeed-status{font-size:12px;font-weight:800;white-space:nowrap}
+  .rfeed-status.done{color:var(--good)}
+  .rfeed-status.wait{color:var(--accent)}
+  .reservation-feed-note{margin:12px 2px 0;color:var(--muted);font-size:12px}
+  @keyframes rfeed-scroll{from{transform:translateY(0)}to{transform:translateY(-50%)}}
+  @media(max-width:560px){
+    .reservation-feed{padding:38px 0}
+    .reservation-feed-card{padding:18px 12px;border-radius:16px}
+    .reservation-feed-title{align-items:flex-start}
+    .reservation-feed-title p{font-size:12px}
+    .reservation-feed-badge{padding:6px 8px;font-size:11px}
+    .rfeed-header,.rfeed-row{grid-template-columns:1fr .85fr 1.4fr .8fr .95fr;gap:5px;padding-left:8px;padding-right:8px}
+    .rfeed-header{font-size:10px}
+    .rfeed-row{font-size:10.5px}
+    .rfeed-status{font-size:10px}
+  }
+  @media(prefers-reduced-motion:reduce){
+    .rfeed-window{height:auto;max-height:336px;overflow:auto}
+    .rfeed-track{animation:none}
+    .rfeed-list[aria-hidden="true"]{display:none}
+  }
+
   /* header */
   header.site{background:var(--surface);border-bottom:1px solid var(--line);position:sticky;top:0;z-index:40}
   .site-row{display:flex;align-items:center;justify-content:space-between;padding:16px 24px;max-width:1120px;margin:0 auto}
@@ -729,6 +768,29 @@
   </section>
 </div>
 
+<section class="reservation-feed" aria-labelledby="reservation-feed-heading">
+  <div class="wrap">
+    <div class="reservation-feed-card">
+      <div class="reservation-feed-title">
+        <div>
+          <h2 id="reservation-feed-heading">최근 예약 현황</h2>
+          <p>예약자 정보는 일부 마스킹하여 표시합니다.</p>
+        </div>
+        <span class="reservation-feed-badge"><i aria-hidden="true"></i>예약 현황</span>
+      </div>
+      <div role="table" aria-label="마스킹된 최근 예약 현황" aria-live="off">
+        <div class="rfeed-header" role="row">
+          <span role="columnheader">예약일자</span><span role="columnheader">예약자</span><span role="columnheader">연락처</span><span role="columnheader">차량번호</span><span role="columnheader">예약상태</span>
+        </div>
+        <div class="rfeed-window" tabindex="0" aria-label="예약 내역 자동 스크롤 영역">
+          <div class="rfeed-track" id="reservation-feed-track" role="rowgroup"></div>
+        </div>
+      </div>
+      <p class="reservation-feed-note">화면의 목록은 자동으로 흐르며, 표시 정보는 개인정보 보호를 위해 마스킹되어 있습니다.</p>
+    </div>
+  </div>
+</section>
+
 <footer>
   <div class="wrap">
     <div class="foot-top">
@@ -791,6 +853,46 @@
     </div>
   </div>
 </div>
+
+<script>
+(function(){
+  var records = [
+    ['2026-09-10','1**4','****','12**','예약완료'],
+    ['2026-09-14','3*1','321','3***','예약완료'],
+    ['2026-09-27','염상*','0109368****','94**','접수대기'],
+    ['2026-09-27','윤대*','0105684****','97**','예약완료'],
+    ['2026-09-27','임동*','0108850****','66**','접수대기'],
+    ['2026-09-27','임태*','0106861****','25**','예약완료'],
+    ['2026-09-27','이원*','0104050****','28**','접수대기'],
+    ['2026-09-27','김남*','0103175****','97**','예약완료']
+  ];
+  var track = document.getElementById('reservation-feed-track');
+  if(!track) return;
+  [false,true].forEach(function(isClone){
+    var list = document.createElement('ul');
+    list.className = 'rfeed-list';
+    list.setAttribute('role','rowgroup');
+    if(isClone) list.setAttribute('aria-hidden','true');
+    records.forEach(function(record){
+      var row = document.createElement('li');
+      row.className = 'rfeed-row';
+      row.setAttribute('role','row');
+      record.forEach(function(value,index){
+        var cell = document.createElement('span');
+        cell.setAttribute('role','cell');
+        cell.textContent = value;
+        if(index >= 1 && index <= 3) cell.className = 'rfeed-masked';
+        if(index === 4){
+          cell.classList.add('rfeed-status',value === '예약완료' ? 'done' : 'wait');
+        }
+        row.appendChild(cell);
+      });
+      list.appendChild(row);
+    });
+    track.appendChild(list);
+  });
+})();
+</script>
 
 <script>
 (function(){
@@ -892,6 +994,10 @@
   }
 
   function showView(id){
+    if(id === 'admin'){
+      window.location.assign('/admin');
+      return;
+    }
     document.querySelectorAll('.view').forEach(function(v){ v.hidden = (v.id !== 'view-'+id); });
     window.scrollTo({top:0});
     if(id !== 'admin') trackGaEvent('site_section_view', {section:id});

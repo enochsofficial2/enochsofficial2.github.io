@@ -1,0 +1,122 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex,nofollow,noarchive">
+  <meta name="referrer" content="no-referrer">
+  <title>관리자 대시보드 | 형제주차장</title>
+  <style>
+    :root{color-scheme:dark;--bg:#10131a;--panel:#191e28;--line:#303747;--text:#f3f5fa;--muted:#a4adbd;--accent:#e2b84d;--green:#29a46b;--red:#fa7777}
+    *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font:15px/1.55 system-ui,-apple-system,"Segoe UI",sans-serif}
+    a{color:#9fc7ff}button,input{font:inherit}button{cursor:pointer}.shell{max-width:1160px;margin:auto;padding:32px 22px 70px}.brand{display:flex;align-items:center;gap:12px;margin-bottom:24px}.brand-mark{display:grid;place-items:center;background:#bd4e4b;border-radius:12px;width:44px;height:44px;font-weight:900}.brand h1{font-size:21px;margin:0}.brand small{display:block;color:var(--muted);font-weight:400}.card{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:22px;margin:14px 0}.login{max-width:420px;margin:9vh auto}.login h2{margin:0 0 4px}.muted{color:var(--muted)}label{display:block;font-weight:700;margin:15px 0 6px}input{width:100%;border:1px solid var(--line);border-radius:10px;padding:12px;background:#11151d;color:var(--text)}button.primary{border:0;border-radius:10px;background:var(--accent);color:#1c1a12;font-weight:800;padding:12px 17px}.login button{width:100%;margin-top:18px}.error{color:var(--red);min-height:24px;margin-top:10px}.top{display:flex;align-items:center;justify-content:space-between;gap:12px}.top h2,.card h2{margin:0;font-size:18px}.link-btn,.ghost{border:1px solid var(--line);border-radius:9px;background:#202632;color:var(--text);padding:9px 13px;text-decoration:none}.grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}.metric{background:#131821;border:1px solid var(--line);border-radius:12px;padding:16px}.metric span{display:block;color:var(--muted);font-size:13px}.metric b{display:block;font-size:26px;margin-top:5px}.tables{display:grid;grid-template-columns:1fr 1fr;gap:14px}.table-wrap{overflow:auto;margin-top:12px}table{border-collapse:collapse;width:100%;font-size:13px;min-width:560px}th,td{text-align:left;padding:10px 9px;border-bottom:1px solid var(--line);vertical-align:top}th{color:var(--muted);font-size:12px}td{max-width:240px;overflow-wrap:anywhere}.badge{display:inline-flex;border:1px solid var(--line);border-radius:999px;padding:3px 9px;color:var(--muted);font-size:12px}.toolbar{display:flex;gap:9px;align-items:center;flex-wrap:wrap}.toolbar .muted{margin-right:auto}.section-note{margin-top:12px;color:var(--muted);font-size:13px}.status{font-size:13px;color:var(--muted)}.hide{display:none!important}.empty{padding:16px;text-align:center;color:var(--muted)}.status-btn{border:1px solid var(--line);border-radius:8px;background:#202632;color:var(--text);padding:6px 9px}.report-links{display:flex;gap:12px;flex-wrap:wrap;margin-top:12px}.event-table{min-width:360px}@media(max-width:760px){.grid{grid-template-columns:repeat(2,minmax(0,1fr))}.tables{grid-template-columns:1fr}.shell{padding:20px 13px 45px}.card{padding:17px}.metric b{font-size:22px}}
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <div class="brand"><div class="brand-mark">P</div><div><h1>형제주차장 관리자</h1><small>예약 관리 · GA4 방문 분석</small></div></div>
+
+    <section id="login-panel" class="card login">
+      <h2>관리자 로그인</h2><p class="muted">허가된 관리자 계정으로 로그인하세요.</p>
+      <form id="login-form">
+        <label for="email">계정 아이디</label><input id="email" name="email" type="email" autocomplete="username" required>
+        <label for="password">비밀번호</label><input id="password" name="password" type="password" autocomplete="current-password" required>
+        <div id="login-error" class="error" role="alert"></div>
+        <button id="login-button" class="primary" type="submit">로그인</button>
+      </form>
+    </section>
+
+    <section id="dashboard" class="hide">
+      <div class="card top"><div><h2>대시보드</h2><span class="status" id="updated">자료 확인 중…</span></div><div class="toolbar"><button class="ghost" id="refresh">새로고침</button><button class="ghost" id="logout">로그아웃</button></div></div>
+      <section class="card" aria-labelledby="ga-title">
+        <div class="top"><div><h2 id="ga-title">Google Analytics 4 · 최근 7일</h2><span class="status" id="ga-status">연결 상태 확인 중…</span></div><span class="badge">개인정보가 포함된 예약 세부정보는 GA4로 보내지 않습니다</span></div>
+        <div id="ga-metrics" class="grid" style="margin-top:16px"></div>
+        <div class="tables" style="margin-top:14px">
+          <div><h3>날짜별 방문 흐름</h3><div class="table-wrap"><table><thead><tr><th>날짜</th><th>사용자</th><th>세션</th><th>페이지뷰</th></tr></thead><tbody id="ga-days"></tbody></table></div></div>
+          <div><h3>유입 출처 / 매체</h3><div class="table-wrap"><table><thead><tr><th>출처 / 매체</th><th>세션</th><th>사용자</th></tr></thead><tbody id="ga-sources"></tbody></table></div></div>
+        </div>
+        <div class="tables" style="margin-top:14px">
+          <div><h3>주요 행동 이벤트</h3><div class="table-wrap"><table class="event-table"><thead><tr><th>이벤트</th><th>횟수</th><th>사용자</th></tr></thead><tbody id="ga-events"></tbody></table></div></div>
+          <div><h3>고객 경로 분석</h3><p class="muted">GA4 경로 탐색에서 페이지뷰와 예약·문의·요금 계산 등 이벤트의 다음 행동을 확인할 수 있습니다.</p><div class="report-links"><a id="ga-realtime" target="_blank" rel="noopener">실시간 보고서</a><a id="ga-path" target="_blank" rel="noopener">경로 탐색 열기</a><a id="ga-acquisition" target="_blank" rel="noopener">트래픽 획득 보고서</a></div><p class="section-note">경로 탐색은 GA4의 탐색 보고서에서 직접 확인합니다. 이 요약 화면은 최근 7일의 사용자·세션·페이지뷰·참여 시간·유입·행동 이벤트를 표시합니다.</p></div>
+        </div>
+      </section>
+
+      <section class="card">
+        <div class="top"><div><h2>예약 현황</h2><span class="status" id="reservation-status">예약 데이터 확인 중…</span></div><span class="badge">최근 신청 최대 500건</span></div>
+        <div class="table-wrap"><table><thead><tr><th>신청 시각</th><th>예약자</th><th>전화번호</th><th>입차</th><th>출차</th><th>경로</th><th>목적지</th><th>차량</th><th>인원</th><th>상태</th></tr></thead><tbody id="reservations"></tbody></table></div>
+      </section>
+
+      <div class="tables">
+        <section class="card"><h2>내부 방문 통계</h2><div class="table-wrap"><table><thead><tr><th>날짜</th><th>순방문</th><th>페이지뷰</th><th>모바일</th><th>PC</th></tr></thead><tbody id="internal-stats"></tbody></table></div></section>
+        <section class="card"><h2>내부 유입 경로</h2><div class="table-wrap"><table><thead><tr><th>출처</th><th>페이지뷰</th></tr></thead><tbody id="internal-sources"></tbody></table></div><p class="section-note">기존 사이트 내부 집계입니다. GA4 유입 보고서와 집계 기준이 다를 수 있습니다.</p></section>
+      </div>
+    </section>
+  </main>
+<script>
+(() => {
+  const $ = (id) => document.getElementById(id);
+  const loginPanel = $('login-panel'), dashboard = $('dashboard'), loginError = $('login-error');
+  const fmt = (value) => Number(value || 0).toLocaleString('ko-KR');
+  const textCell = (row, value) => { const cell=document.createElement('td'); cell.textContent=value == null || value === '' ? '-' : String(value); row.appendChild(cell); return cell; };
+  const rowOrEmpty = (tbody, count, message) => { tbody.replaceChildren(); if (!count) { const tr=document.createElement('tr'), td=document.createElement('td'); td.colSpan=8; td.className='empty'; td.textContent=message; tr.appendChild(td); tbody.appendChild(tr); } };
+  async function api(url, options={}) {
+    const response = await fetch(url, { credentials:'same-origin', cache:'no-store', ...options, headers:{'Content-Type':'application/json', ...(options.headers||{})} });
+    const data = await response.json().catch(()=>({}));
+    if (!response.ok) throw new Error(data.error || `요청 실패 (${response.status})`);
+    return data;
+  }
+  function showDashboard(){ loginPanel.classList.add('hide'); dashboard.classList.remove('hide'); loadDashboard(); }
+  async function checkSession(){ try { await api('/api/admin/login'); showDashboard(); } catch (_) {} }
+
+  $('login-form').addEventListener('submit', async (event) => {
+    event.preventDefault(); loginError.textContent=''; $('login-button').disabled=true; $('login-button').textContent='확인 중…';
+    try { await api('/api/admin/login',{method:'POST',body:JSON.stringify({email:$('email').value,password:$('password').value})}); $('password').value=''; showDashboard(); }
+    catch(error){ loginError.textContent=error.message; }
+    finally { $('login-button').disabled=false; $('login-button').textContent='로그인'; }
+  });
+
+  $('logout').addEventListener('click', async () => { try { await api('/api/admin/login',{method:'DELETE'}); } finally { dashboard.classList.add('hide'); loginPanel.classList.remove('hide'); $('email').value=''; $('password').value=''; } });
+  $('refresh').addEventListener('click', loadDashboard);
+
+  async function loadDashboard(){
+    $('updated').textContent='자료 확인 중…';
+    const jobs=await Promise.allSettled([api('/api/admin/analytics'),api('/api/admin/data')]);
+    if(jobs[0].status==='fulfilled') renderAnalytics(jobs[0].value); else renderAnalyticsError(jobs[0].reason.message);
+    if(jobs[1].status==='fulfilled') renderDatabase(jobs[1].value); else { $('reservation-status').textContent=jobs[1].reason.message; rowOrEmpty($('reservations'),0,'DB 연결 또는 환경 변수 설정을 확인해주세요.'); }
+    $('updated').textContent='마지막 확인: '+new Date().toLocaleString('ko-KR');
+  }
+
+  function metric(label,value,suffix=''){ const box=document.createElement('div');box.className='metric';const title=document.createElement('span');title.textContent=label;const n=document.createElement('b');n.textContent=fmt(value)+suffix;box.append(title,n);return box; }
+  function renderAnalytics(report){
+    $('ga-status').textContent='GA4 실데이터 · 최근 7일';
+    const values=report.overview?.rows?.[0]?.metricValues||[];
+    $('ga-metrics').replaceChildren(
+      metric('활성 사용자',values[0]?.value),metric('세션',values[1]?.value),metric('페이지뷰',values[2]?.value),
+      metric('평균 참여 시간',Math.round(Number(values[3]?.value||0)),'초'),metric('참여율',(Number(values[4]?.value||0)*100).toFixed(1),'%'),metric('이탈률',(Number(values[5]?.value||0)*100).toFixed(1),'%')
+    );
+    fillReportTable($('ga-days'),report.days,['사용자','세션','페이지뷰']);
+    fillReportTable($('ga-sources'),report.sources,['세션','사용자']);
+    fillReportTable($('ga-events'),report.events,['횟수','사용자']);
+  }
+  function fillReportTable(tbody,report,labels){ const rows=report?.rows||[];rowOrEmpty(tbody,rows.length,'GA4에 표시할 데이터가 없습니다.');rows.forEach(item=>{const tr=document.createElement('tr');(item.dimensionValues||[]).forEach(v=>textCell(tr,v.value));(item.metricValues||[]).forEach(v=>textCell(tr,fmt(v.value)));tbody.appendChild(tr);}); }
+  function renderAnalyticsError(message){ $('ga-status').textContent=message; $('ga-metrics').replaceChildren(); ['ga-days','ga-sources','ga-events'].forEach(id=>rowOrEmpty($(id),0,'GA4 API 연결 전입니다. GA4 서비스 계정 환경 변수를 설정해주세요.')); }
+
+  function renderDatabase(data){
+    const reservations=data.reservations||[]; $('reservation-status').textContent=`예약 ${fmt(reservations.length)}건`;
+    const target=$('reservations');rowOrEmpty(target,reservations.length,'예약 데이터가 없습니다.');
+    reservations.forEach(item=>{const tr=document.createElement('tr');textCell(tr,item.created_at?new Date(item.created_at).toLocaleString('ko-KR'):'-');textCell(tr,item.name);textCell(tr,item.phone);textCell(tr,[item.in_date,item.in_time].filter(Boolean).join(' '));textCell(tr,[item.out_date,item.out_time].filter(Boolean).join(' '));textCell(tr,item.route);textCell(tr,item.dest);textCell(tr,[item.car,item.plate].filter(Boolean).join(' · '));textCell(tr,item.people);const statusCell=textCell(tr,item.status||'접수대기');const button=document.createElement('button');button.className='status-btn';button.textContent='상태 변경';button.addEventListener('click',async()=>{button.disabled=true;const status=(item.status||'접수대기')==='예약완료'?'접수대기':'예약완료';try{await api('/api/admin/data',{method:'PATCH',body:JSON.stringify({id:item.id,status})});item.status=status;statusCell.textContent=status;}catch(error){alert(error.message);}finally{button.disabled=false;}});statusCell.append(' ',button);target.appendChild(tr);});
+    const stats=data.stats||[],todayKey=new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Seoul'}).format(new Date());
+    const statBody=$('internal-stats');rowOrEmpty(statBody,stats.length,'집계 데이터가 없습니다.');stats.slice(0,31).forEach(item=>{const tr=document.createElement('tr');[item.date,fmt(item.uniq),fmt(item.pv),fmt(item.mobile_pv),fmt(item.pc_pv)].forEach(v=>textCell(tr,v));statBody.appendChild(tr);});
+    const today=stats.find(item=>item.date===todayKey); if(today) $('reservation-status').textContent+=` · 오늘 방문 ${fmt(today.uniq)}명 / 페이지뷰 ${fmt(today.pv)}`;
+    const totals={};(data.referrers||[]).forEach(item=>{totals[item.source]=(totals[item.source]||0)+Number(item.pv||0);});const sources=Object.entries(totals).sort((a,b)=>b[1]-a[1]);const sourceBody=$('internal-sources');rowOrEmpty(sourceBody,sources.length,'유입 데이터가 없습니다.');sources.forEach(([name,pv])=>{const tr=document.createElement('tr');textCell(tr,name);textCell(tr,fmt(pv));sourceBody.appendChild(tr);});
+  }
+
+  const property='553739677';
+  $('ga-realtime').href=`https://analytics.google.com/analytics/web/#/a407681722p${property}/realtime/overview`;
+  $('ga-path').href=`https://analytics.google.com/analytics/web/#/a407681722p${property}/explore`;
+  $('ga-acquisition').href=`https://analytics.google.com/analytics/web/#/a407681722p${property}/reports/acquisition-traffic-acquisition`;
+  checkSession();
+})();
+</script>
+</body>
+</html>
