@@ -69,7 +69,10 @@ module.exports = async function handler(req, res) {
       runReport(token, propertyId, { ...common, dimensions: [{ name: 'eventName' }], metrics: [{ name: 'eventCount' }, { name: 'totalUsers' }], limit: 20 })
     ]);
     return res.status(200).json({ connected: true, overview, days, sources, events });
-  } catch (_) {
+  } catch (error) {
+    // Keep the credential and Google response body out of logs; these codes
+    // distinguish OAuth failures from Analytics Data API/report failures.
+    console.error('GA4 request failed:', error.message);
     return res.status(502).json({ connected: false, error: 'GA4 보고서를 가져오지 못했습니다. API 권한과 속성 접근 권한을 확인해주세요.' });
   }
 };

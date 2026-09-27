@@ -2,7 +2,9 @@ const { requireSession, originIsSameSite, noStore } = require('../../lib/admin-a
 
 function supabaseHeaders() {
   const key = process.env.SUPABASE_SECRET_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY;
-  return { apikey: key, Authorization: 'Bearer ' + key, 'Content-Type': 'application/json' };
+  // Supabase's new sb_secret_* API keys are not JWTs. Send the key only in
+  // `apikey`; putting it in Authorization makes Supabase reject it as invalid.
+  return { apikey: key, 'Content-Type': 'application/json' };
 }
 
 async function readTable(table, query) {
